@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "The Infinite Duo"
+version = "1.0.0"
+id = "artifacts/infinite-duo"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20585
+
+[services.development]
+run = "pnpm --filter @workspace/infinite-duo run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/infinite-duo", "run", "build" ]
+publicDir = "artifacts/infinite-duo/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20585"
+BASE_PATH = "/"

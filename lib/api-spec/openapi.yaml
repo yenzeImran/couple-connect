@@ -3,13 +3,23 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: The Infinite Duo - Couples Game Hub API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: players
+    description: Player management
+  - name: leaderboard
+    description: Leaderboard and scoring
+  - name: predictions
+    description: Daily Predictions game
+  - name: shadowDuel
+    description: Shadow Duel game
+  - name: syncUp
+    description: Sync-Up game
 paths:
   /healthz:
     get:
@@ -24,6 +34,273 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /players:
+    get:
+      operationId: getPlayers
+      tags: [players]
+      summary: Get all players
+      responses:
+        "200":
+          description: List of players
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Player"
+    post:
+      operationId: createPlayer
+      tags: [players]
+      summary: Create or update a player
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePlayerBody"
+      responses:
+        "201":
+          description: Player created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+
+  /players/{id}:
+    get:
+      operationId: getPlayer
+      tags: [players]
+      summary: Get player by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Player found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "404":
+          description: Not found
+
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [leaderboard]
+      summary: Get the weekly leaderboard
+      responses:
+        "200":
+          description: Leaderboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaderboardResponse"
+
+  /leaderboard/relationship:
+    get:
+      operationId: getRelationshipLevel
+      tags: [leaderboard]
+      summary: Get the couple's shared relationship level and XP
+      responses:
+        "200":
+          description: Relationship level info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipLevel"
+
+  /leaderboard/stats:
+    get:
+      operationId: getGameStats
+      tags: [leaderboard]
+      summary: Get aggregated game stats for the hub overview
+      responses:
+        "200":
+          description: Game stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameStats"
+
+  /predictions:
+    get:
+      operationId: getPredictions
+      tags: [predictions]
+      summary: Get today's predictions
+      responses:
+        "200":
+          description: Today's predictions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Prediction"
+    post:
+      operationId: createPrediction
+      tags: [predictions]
+      summary: Create a new daily prediction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePredictionBody"
+      responses:
+        "201":
+          description: Prediction created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prediction"
+
+  /predictions/{id}/resolve:
+    patch:
+      operationId: resolvePrediction
+      tags: [predictions]
+      summary: Resolve a prediction (mark correct or wrong)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResolvePredictionBody"
+      responses:
+        "200":
+          description: Prediction resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Prediction"
+
+  /predictions/history:
+    get:
+      operationId: getPredictionHistory
+      tags: [predictions]
+      summary: Get prediction history with win rates
+      responses:
+        "200":
+          description: Prediction history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictionHistory"
+
+  /shadow-duel/scores:
+    get:
+      operationId: getShadowDuelScores
+      tags: [shadowDuel]
+      summary: Get all shadow duel high scores
+      responses:
+        "200":
+          description: Shadow Duel scores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ShadowDuelScore"
+    post:
+      operationId: submitShadowDuelScore
+      tags: [shadowDuel]
+      summary: Submit a new shadow duel score
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitShadowDuelScoreBody"
+      responses:
+        "201":
+          description: Score submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShadowDuelScore"
+
+  /shadow-duel/leaderboard:
+    get:
+      operationId: getShadowDuelLeaderboard
+      tags: [shadowDuel]
+      summary: Get top 10 shadow duel scores
+      responses:
+        "200":
+          description: Top scores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ShadowDuelScore"
+
+  /sync-up/sessions:
+    get:
+      operationId: getSyncUpSessions
+      tags: [syncUp]
+      summary: Get sync-up game sessions
+      responses:
+        "200":
+          description: Sessions list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SyncUpSession"
+    post:
+      operationId: createSyncUpSession
+      tags: [syncUp]
+      summary: Create a new sync-up session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSyncUpSessionBody"
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncUpSession"
+
+  /sync-up/sessions/{id}/complete:
+    patch:
+      operationId: completeSyncUpSession
+      tags: [syncUp]
+      summary: Complete a sync-up session with results
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteSyncUpBody"
+      responses:
+        "200":
+          description: Session completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncUpSession"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +311,317 @@ components:
       required:
         - status
 
+    Player:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        avatar:
+          type: string
+        totalPoints:
+          type: integer
+        weeklyPoints:
+          type: integer
+        gamesPlayed:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - avatar
+        - totalPoints
+        - weeklyPoints
+        - gamesPlayed
+        - createdAt
+        - updatedAt
+
+    CreatePlayerBody:
+      type: object
+      properties:
+        name:
+          type: string
+        avatar:
+          type: string
+      required:
+        - name
+        - avatar
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        playerId:
+          type: integer
+        playerName:
+          type: string
+        avatar:
+          type: string
+        weeklyPoints:
+          type: integer
+        totalPoints:
+          type: integer
+        rank:
+          type: integer
+      required:
+        - playerId
+        - playerName
+        - avatar
+        - weeklyPoints
+        - totalPoints
+        - rank
+
+    LeaderboardResponse:
+      type: object
+      properties:
+        weeklyLeader:
+          $ref: "#/components/schemas/LeaderboardEntry"
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardEntry"
+        weekEndsAt:
+          type: string
+          format: date-time
+      required:
+        - entries
+        - weekEndsAt
+
+    RelationshipLevel:
+      type: object
+      properties:
+        level:
+          type: integer
+        levelName:
+          type: string
+        currentXp:
+          type: integer
+        xpToNextLevel:
+          type: integer
+        totalXp:
+          type: integer
+        progressPercent:
+          type: integer
+      required:
+        - level
+        - levelName
+        - currentXp
+        - xpToNextLevel
+        - totalXp
+        - progressPercent
+
+    GameStats:
+      type: object
+      properties:
+        totalGamesPlayed:
+          type: integer
+        predictionsWon:
+          type: integer
+        predictionsTotal:
+          type: integer
+        shadowDuelTopScore:
+          type: integer
+        syncUpSessionsPlayed:
+          type: integer
+        currentStreak:
+          type: integer
+      required:
+        - totalGamesPlayed
+        - predictionsWon
+        - predictionsTotal
+        - shadowDuelTopScore
+        - syncUpSessionsPlayed
+        - currentStreak
+
+    Prediction:
+      type: object
+      properties:
+        id:
+          type: integer
+        playerId:
+          type: integer
+        playerName:
+          type: string
+        question:
+          type: string
+        prediction:
+          type: string
+        betPoints:
+          type: integer
+        status:
+          type: string
+          enum: [pending, correct, wrong]
+        resolvedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - playerId
+        - playerName
+        - question
+        - prediction
+        - betPoints
+        - status
+        - createdAt
+
+    CreatePredictionBody:
+      type: object
+      properties:
+        playerId:
+          type: integer
+        question:
+          type: string
+        prediction:
+          type: string
+        betPoints:
+          type: integer
+      required:
+        - playerId
+        - question
+        - prediction
+        - betPoints
+
+    ResolvePredictionBody:
+      type: object
+      properties:
+        correct:
+          type: boolean
+      required:
+        - correct
+
+    PredictionHistory:
+      type: object
+      properties:
+        totalPredictions:
+          type: integer
+        correctPredictions:
+          type: integer
+        winRate:
+          type: integer
+        recentPredictions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Prediction"
+      required:
+        - totalPredictions
+        - correctPredictions
+        - winRate
+        - recentPredictions
+
+    ShadowDuelScore:
+      type: object
+      properties:
+        id:
+          type: integer
+        playerId:
+          type: integer
+        playerName:
+          type: string
+        avatar:
+          type: string
+        score:
+          type: integer
+        level:
+          type: integer
+        combo:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - playerId
+        - playerName
+        - avatar
+        - score
+        - level
+        - combo
+        - createdAt
+
+    SubmitShadowDuelScoreBody:
+      type: object
+      properties:
+        playerId:
+          type: integer
+        score:
+          type: integer
+        level:
+          type: integer
+        combo:
+          type: integer
+      required:
+        - playerId
+        - score
+        - level
+        - combo
+
+    SyncUpSession:
+      type: object
+      properties:
+        id:
+          type: integer
+        player1Id:
+          type: integer
+        player2Id:
+          type: ["integer", "null"]
+        status:
+          type: string
+          enum: [waiting, active, completed]
+        syncScore:
+          type: ["integer", "null"]
+        pattern:
+          type: string
+        player1Score:
+          type: ["integer", "null"]
+        player2Score:
+          type: ["integer", "null"]
+        pointsAwarded:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - id
+        - player1Id
+        - status
+        - pattern
+        - createdAt
+
+    CreateSyncUpSessionBody:
+      type: object
+      properties:
+        player1Id:
+          type: integer
+        pattern:
+          type: string
+      required:
+        - player1Id
+        - pattern
+
+    CompleteSyncUpBody:
+      type: object
+      properties:
+        player2Id:
+          type: integer
+        player1Score:
+          type: integer
+        player2Score:
+          type: integer
+        syncScore:
+          type: integer
+      required:
+        - player2Id
+        - player1Score
+        - player2Score
+        - syncScore

@@ -16,6 +16,34 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## Project: The Infinite Duo
+
+A couples game hub PWA. Dark space-purple theme with electric coral/cyan/amber glow accents.
+
+### Frontend: `artifacts/infinite-duo`
+- React + Vite + TypeScript + Tailwind CSS
+- Framer Motion for animations
+- Zustand (with localStorage persist) for player state
+- Wouter for routing
+
+### Pages
+- `/` — Hub: CSS isometric room with 4 clickable game portals
+- `/players` — Profile setup (create or select players)
+- `/leaderboard` — Weekly standings + relationship level XP bar
+- `/predictions` — Daily Predictions betting game
+- `/shadow-duel` — Shadow Duel: falling shapes tap game
+- `/sync-up` — Sync-Up: color pattern memorization game
+
+### Backend: `artifacts/api-server`
+- Express 5 + pino logging
+- Routes: `/api/players`, `/api/leaderboard`, `/api/predictions`, `/api/shadow-duel`, `/api/sync-up`
+
+### Database Tables
+- `players` — name, avatar (emoji), totalPoints, weeklyPoints, gamesPlayed
+- `predictions` — question, prediction, betPoints, status (pending/correct/wrong)
+- `shadow_duel_scores` — score, level, combo
+- `sync_up_sessions` — pattern, player scores, syncScore, status
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
