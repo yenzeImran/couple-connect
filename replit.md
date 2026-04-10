@@ -27,12 +27,14 @@ A couples game hub PWA. Dark space-purple theme with electric coral/cyan/amber g
 - Wouter for routing
 
 ### Pages
-- `/` — Hub: CSS isometric room with 4 clickable game portals
+- `/` — Hub: CSS isometric room with 4 clickable portals + Truth or Dare and Memory Vault cards below
 - `/players` — Profile setup (create or select players)
 - `/leaderboard` — Weekly standings + relationship level XP bar
 - `/predictions` — Daily Predictions betting game
 - `/shadow-duel` — Shadow Duel: falling shapes tap game
 - `/sync-up` — Sync-Up: color pattern memorization game
+- `/truth-or-dare` — Truth or Dare: 7 categories, 15+ prompts each; multiplayer turn system where Player 1 must complete their dare/answer before Player 2 can draw
+- `/memory-vault` — Memory Vault: 3x3 sliding puzzle co-op; Player 1 solves puzzle to unlock a memory, Player 2 answers a random truth question drawn from the T&D question pool; 6 memories total, 65+ truth questions
 
 ### Backend: `artifacts/api-server`
 - Express 5 + pino logging

@@ -9,6 +9,8 @@ import Leaderboard from "@/pages/leaderboard";
 import Predictions from "@/pages/predictions";
 import ShadowDuel from "@/pages/shadow-duel";
 import SyncUp from "@/pages/sync-up";
+import TruthOrDare from "@/pages/truth-or-dare";
+import MemoryVault from "@/pages/memory-vault";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -22,6 +24,8 @@ function Router() {
       <Route path="/predictions" component={Predictions} />
       <Route path="/shadow-duel" component={ShadowDuel} />
       <Route path="/sync-up" component={SyncUp} />
+      <Route path="/truth-or-dare" component={TruthOrDare} />
+      <Route path="/memory-vault" component={MemoryVault} />
       <Route component={NotFound} />
     </Switch>
   );

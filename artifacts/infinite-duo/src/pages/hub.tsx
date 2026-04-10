@@ -62,9 +62,9 @@ export default function Hub() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-background overflow-hidden relative flex flex-col">
+    <div className="min-h-[100dvh] bg-background relative flex flex-col overflow-y-auto overflow-x-hidden">
       {/* Ambient particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: -1 }}>
         {[...Array(12)].map((_, i) => (
           <motion.div
             key={i}
@@ -140,7 +140,7 @@ export default function Hub() {
       )}
 
       {/* Isometric Room */}
-      <div className="flex-1 relative mx-auto w-full max-w-md" style={{ height: "380px" }}>
+      <div className="relative mx-auto w-full max-w-md" style={{ height: "300px", flexShrink: 0 }}>
         {/* Room base - isometric floor */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div
@@ -274,6 +274,35 @@ export default function Hub() {
           ))}
         </motion.div>
       )}
+
+      {/* New Games Strip */}
+      <div className="mx-4 mb-3 grid grid-cols-2 gap-3">
+        {[
+          { href: "/truth-or-dare", emoji: "🔥", label: "Truth or Dare", sublabel: "Pass & Play", color: "290 90% 72%", shadow: "hsl(290 90% 72% / 0.5)" },
+          { href: "/memory-vault",  emoji: "🧩", label: "Memory Vault",  sublabel: "Co-op Puzzle", color: "150 80% 55%", shadow: "hsl(150 80% 55% / 0.5)" },
+        ].map((g) => (
+          <motion.button
+            key={g.href}
+            className="rounded-2xl border p-3 flex items-center gap-3 text-left"
+            style={{
+              background: `linear-gradient(135deg, hsl(${g.color} / 0.18), hsl(${g.color} / 0.06))`,
+              borderColor: `hsl(${g.color} / 0.45)`,
+              boxShadow: `0 0 18px ${g.shadow}`,
+            }}
+            onClick={() => handleObjectClick(g.href)}
+            whileHover={{ scale: 1.03, y: -2 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            <span className="text-3xl">{g.emoji}</span>
+            <div>
+              <div className="text-sm font-bold leading-tight" style={{ color: `hsl(${g.color})`, textShadow: `0 0 6px hsl(${g.color} / 0.7)` }}>
+                {g.label}
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">{g.sublabel}</div>
+            </div>
+          </motion.button>
+        ))}
+      </div>
 
       {/* Weekly leader or setup CTA */}
       <div className="px-4 pb-6">
