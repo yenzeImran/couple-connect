@@ -344,7 +344,7 @@ function TruthOrDareOnline() {
         ? { name: username.trim(), password: password.trim(), avatar: avatar || "🎭" }
         : { name: username.trim(), password: password.trim() };
 
-      const response = await fetch("http://localhost:8000/api/players/auth", {
+      const response = await fetch(`${import.meta.env.PROD_API_URL || "https://standalone-api-eight.vercel.app"}/api/players/auth`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -393,7 +393,7 @@ function TruthOrDareOnline() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/api/players/search/${encodeURIComponent(trimmed)}`);
+      const response = await fetch(`${import.meta.env.PROD_API_URL || "https://standalone-api-eight.vercel.app"}/api/players/search/${encodeURIComponent(trimmed)}`);
       if (response.ok) {
         const data = await response.json();
         setSearchedPlayers((data || []).filter((p: any) => p.id !== currentUser?.id));
