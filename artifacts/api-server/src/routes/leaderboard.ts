@@ -4,6 +4,15 @@ import { desc, sql, eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 
+const playerColumns = {
+  id: playersTable.id,
+  name: playersTable.name,
+  avatar: playersTable.avatar,
+  weeklyPoints: playersTable.weeklyPoints,
+  totalPoints: playersTable.totalPoints,
+  gamesPlayed: playersTable.gamesPlayed,
+};
+
 const LEVEL_NAMES = [
   "New Couple",
   "Sweethearts",
@@ -31,62 +40,77 @@ function getRelationshipLevel(totalXp: number) {
 }
 
 router.get("/leaderboard", async (req, res): Promise<void> => {
-  const players = await db
-    .select()
-    .from(playersTable)
-    .orderBy(desc(playersTable.weeklyPoints));
+  try {
+    const players = await db
+      .select(playerColumns)
+      .from(playersTable)
+      .orderBy(desc(playersTable.weeklyPoints));
 
-  const entries = players.map((p, i) => ({
-    playerId: p.id,
-    playerName: p.name,
-    avatar: p.avatar,
-    weeklyPoints: p.weeklyPoints,
-    totalPoints: p.totalPoints,
-    rank: i + 1,
-  }));
+    const entries = players.map((p, i) => ({
+      playerId: p.id,
+      playerName: p.name,
+      avatar: p.avatar,
+      weeklyPoints: p.weeklyPoints,
+      totalPoints: p.totalPoints,
+      rank: i + 1,
+    }));
 
-  const now = new Date();
-  const weekEndsAt = new Date(now);
-  weekEndsAt.setDate(now.getDate() + (7 - now.getDay()));
-  weekEndsAt.setHours(23, 59, 59, 999);
+    const now = new Date();
+    const weekEndsAt = new Date(now);
+    weekEndsAt.setDate(now.getDate() + (7 - now.getDay()));
+    weekEndsAt.setHours(23, 59, 59, 999);
 
-  res.json({
-    weeklyLeader: entries[0] ?? null,
-    entries,
-    weekEndsAt: weekEndsAt.toISOString(),
-  });
+    res.json({
+      weeklyLeader: entries[0] ?? null,
+      entries,
+      weekEndsAt: weekEndsAt.toISOString(),
+    });
+  } catch (error) {
+    console.error("Leaderboard error:", error);
+    res.status(500).json({ error: "Failed to fetch leaderboard" });
+  }
 });
 
 router.get("/leaderboard/relationship", async (req, res): Promise<void> => {
-  const players = await db.select().from(playersTable);
-  const totalXp = players.reduce((sum, p) => sum + p.totalPoints, 0);
-  res.json(getRelationshipLevel(totalXp));
+  try {
+    const players = await db.select({ totalPoints: playersTable.totalPoints }).from(playersTable);
+    const totalXp = players.reduce((sum, p) => sum + p.totalPoints, 0);
+    res.json(getRelationshipLevel(totalXp));
+  } catch (error) {
+    console.error("Relationship level error:", error);
+    res.status(500).json({ error: "Failed to fetch relationship level" });
+  }
 });
 
 router.get("/leaderboard/stats", async (req, res): Promise<void> => {
-  const players = await db.select().from(playersTable);
-  const totalGamesPlayed = players.reduce((sum, p) => sum + p.gamesPlayed, 0);
+  try {
+    const players = await db.select({ gamesPlayed: playersTable.gamesPlayed }).from(playersTable);
+    const totalGamesPlayed = players.reduce((sum, p) => sum + p.gamesPlayed, 0);
 
-  const allPredictions = await db.select().from(predictionsTable);
-  const predictionsWon = allPredictions.filter(p => p.status === "correct").length;
-  const predictionsTotal = allPredictions.filter(p => p.status !== "pending").length;
+    const allPredictions = await db.select().from(predictionsTable);
+    const predictionsWon = allPredictions.filter(p => p.status === "correct").length;
+    const predictionsTotal = allPredictions.filter(p => p.status !== "pending").length;
 
-  const topScoreResult = await db
-    .select({ maxScore: sql<number>`max(score)` })
-    .from(shadowDuelScoresTable);
-  const shadowDuelTopScore = topScoreResult[0]?.maxScore ?? 0;
+    const topScoreResult = await db
+      .select({ maxScore: sql<number>`max(score)` })
+      .from(shadowDuelScoresTable);
+    const shadowDuelTopScore = topScoreResult[0]?.maxScore ?? 0;
 
-  const syncSessions = await db.select().from(syncUpSessionsTable).where(eq(syncUpSessionsTable.status, "completed"));
-  const syncUpSessionsPlayed = syncSessions.length;
+    const syncSessions = await db.select().from(syncUpSessionsTable).where(eq(syncUpSessionsTable.status, "completed"));
+    const syncUpSessionsPlayed = syncSessions.length;
 
-  res.json({
-    totalGamesPlayed,
-    predictionsWon,
-    predictionsTotal,
-    shadowDuelTopScore: Number(shadowDuelTopScore),
-    syncUpSessionsPlayed,
-    currentStreak: Math.floor(Math.random() * 7) + 1,
-  });
+    res.json({
+      totalGamesPlayed,
+      predictionsWon,
+      predictionsTotal,
+      shadowDuelTopScore: Number(shadowDuelTopScore),
+      syncUpSessionsPlayed,
+      currentStreak: Math.floor(Math.random() * 7) + 1,
+    });
+  } catch (error) {
+    console.error("Stats error:", error);
+    res.status(500).json({ error: "Failed to fetch stats" });
+  }
 });
 
 export default router;

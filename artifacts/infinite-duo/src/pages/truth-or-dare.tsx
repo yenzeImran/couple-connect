@@ -1,252 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { usePlayerStore } from "@/lib/store";
+import io, { Socket } from "socket.io-client";
+import { CATEGORIES, PROMPTS, Category } from "./TruthOrDareOffline"; // reuse prompts
 
-const CATEGORIES = [
-  { id: "normal",   label: "Normal",   emoji: "🌿" },
-  { id: "romantic", label: "Romantic", emoji: "💕" },
-  { id: "flirty",   label: "Flirty",   emoji: "😘" },
-  { id: "funny",    label: "Funny",    emoji: "🤣" },
-  { id: "adult",    label: "Adult",    emoji: "🍷" },
-  { id: "kidish",   label: "Kid-ish",  emoji: "🧸" },
-  { id: "nasty",    label: "Nasty",    emoji: "🌶️" },
-];
-
-const PROMPTS: Record<string, { truths: string[]; dares: string[] }> = {
-  normal: {
-    truths: [
-      "What is your favorite memory of us?",
-      "What's a habit of mine you find endearing?",
-      "When did you first know you loved me?",
-      "What's something you've always wanted to try together?",
-      "What's the most attractive quality about me?",
-      "What's a small thing I do that makes you smile?",
-      "What's one thing you wish we did more often?",
-      "What's a secret talent you have?",
-      "What's your favorite way to spend a lazy Sunday with me?",
-      "What's the best advice you've ever received about relationships?",
-      "What's a dream you've never told anyone?",
-      "What's the kindest thing I've ever done for you?",
-      "What's something you admire about how I handle hard days?",
-      "What's your love language and do I speak it well?",
-      "What's something you want to experience with me before we're old?",
-    ],
-    dares: [
-      "Give me a 10-second shoulder massage.",
-      "Sing the chorus of a love song to me.",
-      "Tell me something you appreciate about me that you've never said aloud.",
-      "Imitate my laugh.",
-      "Hold my hand and look into my eyes for 20 seconds.",
-      "Say something sweet in a funny accent.",
-      "Text a mutual friend a compliment about our relationship.",
-      "Draw a quick portrait of me in the air.",
-      "Do your best impression of me waking up.",
-      "Name three things you love about me without repeating yourself.",
-    ],
-  },
-  romantic: {
-    truths: [
-      "What's the most romantic thing I've ever done for you?",
-      "What's your ideal date night?",
-      "What song makes you think of us?",
-      "What's a promise you want to make to me?",
-      "Where would you want to go for our dream vacation?",
-      "What's your favorite thing about being with me?",
-      "When do you feel most loved by me?",
-      "What's a small gesture that means a lot to you?",
-      "What's a memory that still gives you butterflies?",
-      "What's one thing you'd like us to do every year?",
-      "What's the moment you knew I was different?",
-      "What does home feel like to you and am I part of it?",
-      "What's a romantic cliché you secretly want us to do?",
-      "What would your ideal anniversary look like?",
-      "What's a love letter you'd write me but haven't yet?",
-    ],
-    dares: [
-      "Write me a two-line poem right now.",
-      "Slow dance with me for 30 seconds.",
-      "Tell me three things you love about me.",
-      "Give me a forehead kiss.",
-      "Hold both my hands and say something sweet.",
-      "Plan a surprise date idea out loud.",
-      "Give me a compliment starting with 'I love the way you...'",
-      "Recreate how you think our first kiss felt.",
-      "Look into my eyes for 30 seconds without talking.",
-      "Text me a love song you want to dedicate to me.",
-    ],
-  },
-  flirty: {
-    truths: [
-      "What's your favorite pickup line?",
-      "What's the most attractive outfit I own?",
-      "What's something I do that's a total turn-on?",
-      "What's a flirty text you'd send me if we just met?",
-      "What's your signature move when flirting?",
-      "What's a compliment you've received that made you blush?",
-      "What part of my personality do you find sexy?",
-      "What's something you find cute when I do it?",
-      "What's a cheesy line you secretly like?",
-      "What's a physical feature of mine you can't resist?",
-      "What's something I do without realizing that drives you wild?",
-      "What's your go-to move to get my attention?",
-      "When was the last time I made your heart skip?",
-      "What's the most attractive thing I've said to you?",
-      "If you could describe my energy in one word, what would it be?",
-    ],
-    dares: [
-      "Say something seductive in a language I don't speak.",
-      "Give me your best 'come hither' look.",
-      "Whisper a pickup line in my ear.",
-      "Tell me a cheesy compliment with a straight face.",
-      "Use a pet name you've never used before.",
-      "Try to make me blush.",
-      "Give me a wink that would make anyone swoon.",
-      "Trace your finger slowly down my arm.",
-      "Do a little shimmy or playful dance move.",
-      "Imitate a flirtatious movie scene.",
-    ],
-  },
-  funny: {
-    truths: [
-      "What's the funniest thing that ever happened to us?",
-      "What's a joke that always makes you laugh?",
-      "What's the most embarrassing thing you've done in public?",
-      "What's a ridiculous fear you have?",
-      "What's the worst fashion trend you followed?",
-      "What's the funniest autocorrect fail you've had?",
-      "What's a weird food combination you enjoy?",
-      "What's the most awkward date you've been on (before me)?",
-      "What's a movie that makes you cry laughing?",
-      "What's the most bizarre dream you've had about me?",
-      "What would your villain name be and what's your evil plan?",
-      "What animal do I remind you of and why?",
-      "What's the weirdest thing you've Googled recently?",
-      "What's a habit of yours that would horrify your parents?",
-      "What's a nickname you secretly gave me in your head?",
-    ],
-    dares: [
-      "Do your best celebrity impression.",
-      "Tell a 'dad joke' and try not to laugh.",
-      "Do an interpretive dance of how you feel right now.",
-      "Make up a rap about our relationship on the spot.",
-      "Talk without moving your lips for 20 seconds.",
-      "Try to lick your elbow.",
-      "Do a dramatic reading of a grocery list.",
-      "Make the sound of an animal I choose.",
-      "Try to make me laugh using only facial expressions.",
-      "Walk across the room like a runway model.",
-    ],
-  },
-  adult: {
-    truths: [
-      "What's a fantasy you've never told me about?",
-      "What turns you on that I might not realize?",
-      "What's your favorite part of my body?",
-      "Have you ever had a dream about me that was spicy?",
-      "When do you feel most attracted to me?",
-      "What's something you'd like me to whisper in your ear?",
-      "What's a movie scene you found unexpectedly arousing?",
-      "What's a secret desire you're shy to admit?",
-      "What's the most adventurous thing you'd want to try?",
-      "What's something you want more of in our relationship?",
-      "What time of day are you most in the mood?",
-      "What's something I do that makes you feel wanted?",
-      "What's a fantasy location you'd want to be intimate in?",
-      "What song would be on your 'mood' playlist?",
-      "What's something you want to ask me but haven't dared?",
-    ],
-    dares: [
-      "Whisper something suggestive in my ear.",
-      "Give me a sensual neck kiss.",
-      "Describe what you'd do if we were alone right now.",
-      "Send me a flirty text even though we're in the same room.",
-      "Tell me a secret fantasy in three words.",
-      "Give me a back scratch with your nails.",
-      "Slow dance with me for 30 seconds with no music.",
-      "Put your hand on my knee and leave it there.",
-      "Say the most seductive thing you can think of with a straight face.",
-      "Give me a kiss somewhere surprising.",
-    ],
-  },
-  kidish: {
-    truths: [
-      "What was your favorite childhood TV show?",
-      "What's the silliest thing you believed as a kid?",
-      "What's a game you loved playing as a child?",
-      "What was your favorite snack after school?",
-      "What's a funny childhood memory?",
-      "What's a toy you wished you still had?",
-      "What's the most embarrassing thing you did as a kid?",
-      "What's a cartoon character you had a crush on?",
-      "What's a silly fear you had growing up?",
-      "What's a family tradition from your childhood?",
-      "What's the worst thing you ever blamed a sibling for?",
-      "What's a made-up word you used as a child?",
-      "What did you want to be when you grew up?",
-      "What's the first thing you ever saved up money to buy?",
-      "What's a song that takes you straight back to childhood?",
-    ],
-    dares: [
-      "Do an impression of a cartoon character.",
-      "Tell a joke a 7-year-old would love.",
-      "Make a funny face and hold it for 10 seconds.",
-      "Sing a nursery rhyme with exaggerated emotion.",
-      "Do a silly walk across the room.",
-      "Pretend you're a dinosaur for 20 seconds.",
-      "Talk in a baby voice for one full minute.",
-      "Balance a spoon on your nose.",
-      "Draw a simple animal with your eyes closed.",
-      "Imitate a famous children's show host.",
-    ],
-  },
-  nasty: {
-    truths: [
-      "What's a roleplay scenario you'd enjoy?",
-      "What's the naughtiest thought you've had today?",
-      "Where's the riskiest place you'd want to be intimate?",
-      "What's a body part of mine you fantasize about?",
-      "What's the kinkiest thing you've ever done?",
-      "What's a dirty word that turns you on?",
-      "What's something you want to try that you saw in a movie?",
-      "What's your favorite position?",
-      "What would you want me to do if I woke you up in the middle of the night?",
-      "What's the boldest thing you've ever said to someone you were attracted to?",
-      "What's something you find irresistibly attractive that most people wouldn't expect?",
-      "How long is the longest you could go without kissing me?",
-      "What's the most daring thing you'd do in public?",
-      "What would the title of a steamy book about us be?",
-      "What's something you want but feel embarrassed asking for?",
-    ],
-    dares: [
-      "Whisper the dirtiest word you can think of.",
-      "Bite my lip gently.",
-      "Tell me what you want me to do to you later.",
-      "Describe in detail a fantasy involving us.",
-      "Kiss me somewhere unexpected.",
-      "Put your hand on my thigh and leave it there.",
-      "Send me a suggestive emoji string describing your mood.",
-      "Tell me your mood in three spicy words.",
-      "Give me a hickey — or pretend to.",
-      "Act out a scene from your favorite romantic movie.",
-    ],
-  },
-};
+type GameState = "lobby" | "inviting" | "waiting" | "playing";
+type Player = { id: string; name: string };
+type Prompt = { type: "truth" | "dare"; text: string; category: string };
+type GameMode = "select" | "offline" | "online";
 
 type PromptType = "truth" | "dare";
 type Phase = "player1-draw" | "player1-dare-pending" | "player2-draw";
 
-interface Prompt { type: PromptType; text: string; category: string }
+type ChatMessage = { from: string; message: string; timestamp: number };
 
-export default function TruthOrDare() {
+interface PromptInterface { type: PromptType; text: string; category: string }
+
+// Offline Truth or Dare Component
+function TruthOrDareOffline() {
   const [, navigate] = useLocation();
-  const { player1Id, player2Id } = usePlayerStore();
 
   const [category, setCategory] = useState("normal");
   const [currentPlayer, setCurrentPlayer] = useState<1 | 2>(1);
   const [phase, setPhase] = useState<Phase>("player1-draw");
-  const [currentPrompt, setCurrentPrompt] = useState<Prompt | null>(null);
-  const [lastPrompt, setLastPrompt] = useState<Prompt | null>(null);
+  const [currentPrompt, setCurrentPrompt] = useState<PromptInterface | null>(null);
+  const [lastPrompt, setLastPrompt] = useState<PromptInterface | null>(null);
   const [dareCompleted, setDareCompleted] = useState(false);
   const [roundCount, setRoundCount] = useState(0);
 
@@ -259,7 +37,7 @@ export default function TruthOrDare() {
     if (navigator.vibrate) navigator.vibrate(50);
 
     const text = getRandom(type);
-    const prompt: Prompt = { type, text, category };
+    const prompt: PromptInterface = { type, text, category };
 
     setLastPrompt(currentPrompt);
     setCurrentPrompt(prompt);
@@ -268,7 +46,6 @@ export default function TruthOrDare() {
     if (type === "dare") {
       setPhase("player1-dare-pending");
     } else {
-      // Truth: after showing, other player draws next
       setPhase("player1-dare-pending");
     }
     setRoundCount(c => c + 1);
@@ -285,7 +62,7 @@ export default function TruthOrDare() {
   const handlePlayer2Draw = (type: PromptType) => {
     if (navigator.vibrate) navigator.vibrate(50);
     const text = getRandom(type);
-    const prompt: Prompt = { type, text, category };
+    const prompt: PromptInterface = { type, text, category };
     setLastPrompt(currentPrompt);
     setCurrentPrompt(prompt);
     setDareCompleted(false);
@@ -347,7 +124,7 @@ export default function TruthOrDare() {
       {/* Category picker */}
       <div className="px-4 mb-3 overflow-x-auto">
         <div className="flex gap-2 pb-1">
-          {CATEGORIES.map(cat => (
+          {CATEGORIES.map((cat: Category) => (
             <motion.button
               key={cat.id}
               className="flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-medium border"
@@ -459,7 +236,732 @@ export default function TruthOrDare() {
       </div>
 
       <div className="p-4 text-center text-xs text-muted-foreground">
-        {CATEGORIES.find(c => c.id === category)?.emoji} {CATEGORIES.find(c => c.id === category)?.label} mode · {PROMPTS[category].truths.length + PROMPTS[category].dares.length} prompts
+        {CATEGORIES.find((c: Category) => c.id === category)?.emoji} {CATEGORIES.find((c: Category) => c.id === category)?.label} mode · {PROMPTS[category].truths.length + PROMPTS[category].dares.length} prompts
+      </div>
+    </div>
+  );
+}
+
+// Online Truth or Dare Component
+function TruthOrDareOnline() {
+  const [, navigate] = useLocation();
+
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ id: number; name: string; avatar: string } | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [authMode, setAuthMode] = useState<"login" | "create">("login");
+  const [selectedAvatar, setSelectedAvatar] = useState("🎭");
+  const [password, setPassword] = useState("");
+
+  // Online mode states
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [myName, setMyName] = useState("");
+  const [myId, setMyId] = useState("");
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [searchedPlayers, setSearchedPlayers] = useState<{ id: number; name: string; avatar: string }[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [invites, setInvites] = useState<{ from: string; fromName: string; roomId: string }[]>([]);
+  const [gameState, setGameState] = useState<GameState>("lobby");
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [opponent, setOpponent] = useState<Player | null>(null);
+  const [currentPrompt, setCurrentPrompt] = useState<Prompt | null>(null);
+  const [lastPrompt, setLastPrompt] = useState<Prompt | null>(null);
+  const [myTurn, setMyTurn] = useState(false);
+  const [category, setCategory] = useState("normal");
+  const [waitingForDareComplete, setWaitingForDareComplete] = useState(false);
+  const [roundCount, setRoundCount] = useState(0);
+
+  // Chat functionality
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [showChat, setShowChat] = useState(false);
+  const [answerText, setAnswerText] = useState("");
+
+  const CHAT_HISTORY_KEY = "truthordare_chat_history";
+
+  const [serverUrl, setServerUrl] = useState(`http://${window.location.hostname}:8000`);
+
+  const clearChat = () => {
+    setChatMessages([]);
+    setChatInput("");
+    setShowChat(false);
+    setAnswerText("");
+  };
+
+  // Check for stored authentication on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem("truthordare_user");
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+        setMyName(user.name);
+      } catch (error) {
+        localStorage.removeItem("truthordare_user");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!roomId) return;
+    try {
+      const saved = localStorage.getItem(CHAT_HISTORY_KEY);
+      const history = saved ? (JSON.parse(saved) as Record<string, ChatMessage[]>) : {};
+      setChatMessages(history[roomId] ?? []);
+    } catch (error) {
+      setChatMessages([]);
+    }
+  }, [roomId]);
+
+  useEffect(() => {
+    if (!roomId) return;
+    try {
+      const saved = localStorage.getItem(CHAT_HISTORY_KEY);
+      const history = saved ? (JSON.parse(saved) as Record<string, ChatMessage[]>) : {};
+      history[roomId] = chatMessages;
+      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(history));
+    } catch (error) {
+      // ignore storage errors
+    }
+  }, [chatMessages, roomId]);
+
+  // Avatar options
+  const AVATAR_OPTIONS = ["🎭", "👤", "🦊", "🐱", "🐶", "🐼", "🐨", "🦁", "🐯", "🦄", "🐸", "🐵", "🙈", "🙉", "🙊"];
+
+  // Handle authentication
+  const handleAuth = async (username: string, password: string, avatar?: string) => {
+    if (!username.trim() || !password.trim()) return;
+
+    setAuthLoading(true);
+    setAuthError("");
+
+    try {
+      const requestBody = authMode === "create"
+        ? { name: username.trim(), password: password.trim(), avatar: avatar || "🎭" }
+        : { name: username.trim(), password: password.trim() };
+
+      const response = await fetch("http://localhost:8000/api/players/auth", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Authentication failed");
+      }
+
+      const data = await response.json();
+      const user = data.player;
+
+      // Store in localStorage
+      localStorage.setItem("truthordare_user", JSON.stringify(user));
+
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+      setMyName(user.name);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Failed to authenticate. Please try again.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("truthordare_user");
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+    setMyName("");
+    if (socket) {
+      socket.disconnect();
+    }
+    clearChat();
+  };
+
+  // Search for players using backend API
+  const searchPlayers = async (query: string) => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setSearchedPlayers([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8000/api/players/search/${encodeURIComponent(trimmed)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSearchedPlayers((data || []).filter((p: any) => p.id !== currentUser?.id));
+      } else {
+        setSearchedPlayers([]);
+      }
+    } catch (error) {
+      console.error("Search failed:", error);
+      setSearchedPlayers([]);
+    }
+  };
+
+  useEffect(() => {
+    const newSocket = io(serverUrl); // backend URL
+    setSocket(newSocket);
+
+    newSocket.on("connect", () => {
+      console.log("Connected", newSocket.id);
+      setMyId(newSocket.id || "");
+    });
+
+    newSocket.on("playersList", (playersList: Player[]) => {
+      setPlayers(playersList.filter(p => p.id !== newSocket.id));
+    });
+
+    newSocket.on("inviteReceived", ({ from, fromName, roomId }) => {
+      setInvites(prev => [...prev, { from, fromName, roomId }]);
+    });
+
+    newSocket.on("inviteAccepted", ({ roomId, opponentName }) => {
+      setRoomId(roomId);
+      setOpponent({ id: "", name: opponentName });
+      setGameState("playing");
+      setMyTurn(true); // inviter goes first
+      newSocket.emit("joinRoom", { roomId, name: myName });
+    });
+
+    newSocket.on("gameStart", ({ roomId, opponentName, turn }) => {
+      setRoomId(roomId);
+      setOpponent({ id: "", name: opponentName });
+      setGameState("playing");
+      setMyTurn(turn === 'player2'); // player2 starts with turn 'player1', so myTurn false
+      newSocket.emit("joinRoom", { roomId, name: myName });
+    });
+
+    newSocket.on("reconnected", ({ roomId, opponentName, turn, currentPrompt, myTurn }) => {
+      setRoomId(roomId);
+      setOpponent({ id: "", name: opponentName });
+      setGameState("playing");
+      setCurrentPrompt(currentPrompt);
+      setMyTurn(myTurn);
+    });
+
+    newSocket.on("promptReceived", (prompt: Prompt) => {
+      setLastPrompt(currentPrompt);
+      setCurrentPrompt(prompt);
+      setAnswerText("");
+      setWaitingForDareComplete(prompt.type === "dare");
+    });
+
+    newSocket.on("turnChanged", ({ nextPlayerName }) => {
+      setMyTurn(nextPlayerName === myName);
+      setWaitingForDareComplete(false);
+      setCurrentPrompt(null);
+      setAnswerText("");
+    });
+
+    newSocket.on("gameEnded", () => {
+      alert("Game ended by opponent");
+      setGameState("lobby");
+      setRoomId(null);
+      setOpponent(null);
+      clearChat();
+    });
+
+    newSocket.on("chatMessage", ({ from, message, timestamp }) => {
+      setChatMessages(prev => [...prev, { from, message, timestamp }]);
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [serverUrl]);
+
+  const handleLogin = () => {
+    if (myName.trim()) {
+      socket?.emit("register", myName);
+      setLoggedIn(true);
+    }
+  };
+
+  const sendInvite = (toId: string) => {
+    socket?.emit("invite", { to: toId });
+    setGameState("inviting");
+  };
+
+  const acceptInvite = (invite: typeof invites[0]) => {
+    socket?.emit("acceptInvite", { roomId: invite.roomId, from: invite.from });
+    setInvites(prev => prev.filter(i => i.roomId !== invite.roomId));
+  };
+
+  const declineInvite = (invite: typeof invites[0]) => {
+    socket?.emit("declineInvite", { roomId: invite.roomId });
+    setInvites(prev => prev.filter(i => i.roomId !== invite.roomId));
+  };
+
+  const getRandomPrompt = (type: "truth" | "dare") => {
+    const pool = PROMPTS[category][type === "truth" ? "truths" : "dares"];
+    return pool[Math.floor(Math.random() * pool.length)];
+  };
+
+  const handleDraw = (type: "truth" | "dare") => {
+    if (!myTurn || !roomId) return;
+    const text = getRandomPrompt(type);
+    const prompt: Prompt = { type, text, category };
+    socket?.emit("sendPrompt", { roomId, prompt });
+    setCurrentPrompt(prompt);
+    setWaitingForDareComplete(type === "dare");
+  };
+
+  const handleAcceptAnswer = () => {
+    if (!roomId || !answerText.trim()) return;
+    const answer = answerText.trim();
+    socket?.emit("answerAccepted", { roomId, answer });
+    setChatMessages(prev => [...prev, { from: myName, message: answer, timestamp: Date.now() }]);
+    setAnswerText("");
+  };
+
+  const handleDareComplete = () => {
+    if (!roomId) return;
+    socket?.emit("dareComplete", { roomId });
+    setWaitingForDareComplete(false);
+    setCurrentPrompt(null);
+  };
+
+  const sendChatMessage = () => {
+    if (!roomId || !chatInput.trim()) return;
+    const message = chatInput.trim();
+    socket?.emit("sendChat", { roomId, message });
+    setChatMessages(prev => [...prev, { from: myName, message, timestamp: Date.now() }]);
+    setChatInput("");
+  };
+
+  // Show authentication screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 space-y-4">
+          <h2 className="text-xl font-bold text-center">
+            {authMode === "create" ? "Create Account" : "Login"}
+          </h2>
+          <p className="text-sm text-muted-foreground text-center">
+            {authMode === "create"
+              ? "Choose your name and avatar to play online"
+              : "Enter your username to continue playing"
+            }
+          </p>
+
+          {/* Mode toggle */}
+          <div className="flex rounded-lg bg-muted p-1">
+            <button
+              onClick={() => setAuthMode("create")}
+              className={`flex-1 rounded-md py-2 px-3 text-sm font-medium transition-colors ${
+                authMode === "create"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Create Account
+            </button>
+            <button
+              onClick={() => setAuthMode("login")}
+              className={`flex-1 rounded-md py-2 px-3 text-sm font-medium transition-colors ${
+                authMode === "login"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Login
+            </button>
+          </div>
+
+          {authError && (
+            <div className="text-sm text-red-500 text-center bg-red-50 p-2 rounded">
+              {authError}
+            </div>
+          )}
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleAuth(myName, password, authMode === "create" ? selectedAvatar : undefined);
+            }}
+            className="space-y-4"
+          >
+            <input
+              type="text"
+              className="w-full rounded-xl border border-border bg-background px-4 py-3"
+              value={myName}
+              onChange={(e) => setMyName(e.target.value)}
+              placeholder="Enter your username"
+              disabled={authLoading}
+              minLength={2}
+              maxLength={20}
+            />
+
+            <input
+              type="password"
+              className="w-full rounded-xl border border-border bg-background px-4 py-3"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              disabled={authLoading}
+              minLength={4}
+              maxLength={50}
+            />
+
+            {authMode === "create" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Choose your avatar</label>
+                <div className="grid grid-cols-5 gap-2">
+                  {AVATAR_OPTIONS.map((avatar) => (
+                    <button
+                      key={avatar}
+                      type="button"
+                      onClick={() => setSelectedAvatar(avatar)}
+                      className={`aspect-square rounded-lg border-2 text-2xl flex items-center justify-center transition-colors ${
+                        selectedAvatar === avatar
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/50"
+                      }`}
+                      disabled={authLoading}
+                    >
+                      {avatar}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <motion.button
+              type="submit"
+              className="w-full rounded-xl bg-primary py-3 font-bold"
+              disabled={authLoading || myName.trim().length < 2 || password.trim().length < 4}
+              whileTap={{ scale: 0.97 }}
+            >
+              {authLoading
+                ? (authMode === "create" ? "Creating Account..." : "Logging in...")
+                : (authMode === "create" ? "Create Account" : "Login")
+              }
+            </motion.button>
+          </form>
+
+          <button
+            onClick={() => navigate("/truth-or-dare")}
+            className="w-full text-sm text-muted-foreground"
+          >
+            ← Back to mode selection
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!loggedIn) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 space-y-4">
+          <h2 className="text-xl font-bold">Enter your name</h2>
+          <input
+            type="text"
+            className="w-full rounded-xl border border-border bg-background px-4 py-2"
+            value={myName}
+            onChange={e => setMyName(e.target.value)}
+            placeholder="Your name"
+          />
+          <motion.button
+            className="w-full rounded-xl bg-primary py-2 font-bold"
+            whileTap={{ scale: 0.97 }}
+            onClick={handleLogin}
+          >
+            Join Lobby
+          </motion.button>
+        </div>
+      </div>
+    );
+  }
+
+  if (gameState === "playing" && opponent) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col p-4">
+        <div className="flex justify-between items-center mb-4">
+          <button onClick={() => { socket?.emit("leaveGame", { roomId }); setGameState("lobby"); clearChat(); }} className="text-muted-foreground">← Exit</button>
+          <h1 className="font-bold">vs {opponent.name}</h1>
+          <div className="text-sm">{myTurn ? "Your turn" : "Opponent's turn"}</div>
+        </div>
+
+        {/* Category picker (only visible on your turn) */}
+        {myTurn && !currentPrompt && (
+          <div className="px-2 mb-4 overflow-x-auto">
+            <div className="flex gap-2 pb-1">
+              {CATEGORIES.map((cat: Category) => (
+                <button key={cat.id} onClick={() => setCategory(cat.id)} className={`px-3 py-1 rounded-full text-xs ${category === cat.id ? "bg-primary text-white" : "bg-muted"}`}>
+                  {cat.emoji} {cat.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Prompt display */}
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <AnimatePresence mode="wait">
+            {currentPrompt ? (
+              <motion.div className="rounded-3xl border p-6 text-center max-w-sm" initial={{ scale: 0.9 }} animate={{ scale: 1 }}>
+                <div className="text-4xl mb-2">{currentPrompt.type === "truth" ? "🕊️" : "⚡"}</div>
+                <p className="text-lg font-semibold">{currentPrompt.text}</p>
+                <div className="text-xs mt-2 text-muted-foreground">{currentPrompt.type.toUpperCase()} · {CATEGORIES.find((c: Category) => c.id === category)?.label}</div>
+              </motion.div>
+            ) : (
+              <div className="text-center text-muted-foreground">{myTurn ? "Choose Truth or Dare" : "Waiting for opponent..."}</div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Action buttons */}
+        <div className="grid grid-cols-3 gap-3 mt-4">
+          <button onClick={() => handleDraw("truth")} disabled={!myTurn} className="rounded-xl bg-cyan-600 py-3 font-bold disabled:opacity-50">🕊️ TRUTH</button>
+          <button onClick={() => handleDraw("dare")} disabled={!myTurn} className="rounded-xl bg-rose-600 py-3 font-bold disabled:opacity-50">⚡ DARE</button>
+          <button onClick={() => handleDraw(Math.random() > 0.5 ? "truth" : "dare")} disabled={!myTurn} className="rounded-xl bg-violet-600 py-3 font-bold disabled:opacity-50">🎲 RANDOM</button>
+        </div>
+
+        {currentPrompt && (
+          <div className="mt-4 w-full max-w-sm space-y-3">
+            {/* Chat toggle button */}
+            <button
+              onClick={() => setShowChat(!showChat)}
+              className="w-full rounded-xl bg-blue-600 py-2 font-bold text-sm"
+            >
+              💬 {showChat ? "Hide" : "Show"} Chat
+            </button>
+
+            {/* Chat messages */}
+            {showChat && (
+              <div className="bg-card rounded-xl p-3 max-h-40 overflow-y-auto space-y-2">
+                {chatMessages.length === 0 ? (
+                  <div className="text-center text-muted-foreground text-sm">No messages yet</div>
+                ) : (
+                  chatMessages.map((msg, index) => (
+                    <div key={index} className={`text-sm ${msg.from === myName ? "text-right" : "text-left"}`}>
+                      <div className={`inline-block px-2 py-1 rounded-lg max-w-xs break-words ${
+                        msg.from === myName
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted"
+                      }`}>
+                        <div className="font-medium text-xs opacity-75">{msg.from}</div>
+                        <div>{msg.message}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Chat input */}
+            {showChat && (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Type your response..."
+                  onKeyPress={(e) => e.key === "Enter" && sendChatMessage()}
+                />
+                <button
+                  onClick={sendChatMessage}
+                  disabled={!chatInput.trim()}
+                  className="rounded-xl bg-primary px-4 py-2 font-bold text-sm disabled:opacity-50"
+                >
+                  Send
+                </button>
+              </div>
+            )}
+
+            {!myTurn && (
+              <div className="space-y-3">
+                <div className="text-center text-sm text-muted-foreground">
+                  {currentPrompt.type === "dare"
+                    ? "Complete the dare and submit your answer to continue."
+                    : "Answer the truth and accept your answer to continue."
+                  }
+                </div>
+                <input
+                  type="text"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                  value={answerText}
+                  onChange={(e) => setAnswerText(e.target.value)}
+                  placeholder="Type your answer..."
+                  onKeyPress={(e) => e.key === "Enter" && handleAcceptAnswer()}
+                />
+                <button
+                  onClick={handleAcceptAnswer}
+                  disabled={!answerText.trim()}
+                  className="w-full rounded-xl bg-emerald-600 py-3 font-bold text-sm disabled:opacity-50"
+                >
+                  ✅ Accept Answer
+                </button>
+              </div>
+            )}
+
+            {myTurn && currentPrompt && (
+              <div className="mt-3 text-center text-sm text-muted-foreground">
+                Waiting for your opponent to answer the {currentPrompt.type}.
+              </div>
+            )}
+          </div>
+        )}
+
+        {!myTurn && currentPrompt && currentPrompt.type === "truth" && (
+          <div className="mt-4 text-center text-sm text-muted-foreground">Opponent is answering truth...</div>
+        )}
+      </div>
+    );
+  }
+
+  // Lobby view
+  return (
+    <div className="min-h-screen bg-background p-4">
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h1 className="text-xl font-bold">Lobby</h1>
+          <p className="text-sm text-muted-foreground">Playing as {currentUser?.name}</p>
+          <input type="text" value={serverUrl} onChange={e => setServerUrl(e.target.value)} placeholder="Server URL" className="w-full rounded-xl border border-border bg-background px-4 py-2 mt-2" />
+        </div>
+        <div className="flex gap-2">
+          <button onClick={handleLogout} className="text-sm text-muted-foreground px-3 py-1 rounded border">
+            Logout
+          </button>
+          <button onClick={() => { socket?.disconnect(); clearChat(); navigate("/"); }} className="text-muted-foreground">Leave</button>
+        </div>
+      </div>
+
+      {/* Incoming invites */}
+      {invites.length > 0 && (
+        <div className="mb-6 space-y-2">
+          <h2 className="text-sm font-semibold">Invites</h2>
+          {invites.map(inv => (
+            <div key={inv.roomId} className="flex justify-between items-center bg-card p-3 rounded-xl">
+              <span>{inv.fromName} invited you</span>
+              <div className="flex gap-2">
+                <button onClick={() => acceptInvite(inv)} className="text-green-500">Accept</button>
+                <button onClick={() => declineInvite(inv)} className="text-red-500">Decline</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Search & player list */}
+      <input
+        type="text"
+        placeholder="Search players..."
+        className="w-full rounded-xl border border-border bg-background px-4 py-2 mb-4"
+        value={searchTerm}
+        onChange={(e) => {
+          setSearchTerm(e.target.value);
+          searchPlayers(e.target.value);
+        }}
+      />
+      <div className="space-y-2">
+        {searchTerm && searchedPlayers.length === 0 && <div className="text-center text-muted-foreground">No players found</div>}
+        {!searchTerm && players.length === 0 && <div className="text-center text-muted-foreground">No players online</div>}
+        {(searchTerm ? searchedPlayers : players).map(p => (
+          <div key={p.id} className="flex justify-between items-center bg-card p-3 rounded-xl">
+            <span>{p.name}</span>
+            <button onClick={() => sendInvite(p.id.toString())} className="text-primary">Invite</button>
+          </div>
+        ))}
+      </div>
+
+      {gameState === "inviting" && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <div className="bg-card p-6 rounded-2xl">Waiting for opponent to accept...</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Main Truth or Dare Component with Mode Selection
+export default function TruthOrDare() {
+  const [, navigate] = useLocation();
+  const [mode, setMode] = useState<GameMode>("select");
+
+  // Clear chat when switching modes
+  useEffect(() => {
+    if (mode !== "online") {
+      // We'll clear chat in the online component itself
+    }
+  }, [mode]);
+
+  if (mode === "offline") {
+    return <TruthOrDareOffline />;
+  }
+
+  if (mode === "online") {
+    return <TruthOrDareOnline />;
+  }
+
+  // Mode selection screen
+  return (
+    <div className="min-h-[100dvh] bg-background flex flex-col">
+      {/* Header */}
+      <div className="p-4 pb-2 flex items-center justify-between">
+        <motion.button className="text-sm text-muted-foreground" onClick={() => navigate("/")} whileTap={{ scale: 0.95 }}>
+          ← Back
+        </motion.button>
+        <h1 className="font-bold">Truth or Dare</h1>
+        <div></div>
+      </div>
+
+      {/* Mode selection */}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 gap-8">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🎭</div>
+          <h2 className="text-2xl font-bold mb-2">Choose Your Mode</h2>
+          <p className="text-muted-foreground">Play with a partner or go online</p>
+        </div>
+
+        <div className="w-full max-w-sm space-y-4">
+          <motion.button
+            className="w-full rounded-2xl py-6 font-bold text-lg flex items-center justify-center gap-3"
+            style={{ background: "linear-gradient(135deg, hsl(350 80% 60%), hsl(30 90% 55%))", boxShadow: "0 0 20px hsl(350 80% 60% / 0.4)" }}
+            onClick={() => setMode("offline")}
+            whileTap={{ scale: 0.97 }}
+          >
+            <span className="text-2xl">👥</span>
+            <div className="text-left">
+              <div>Offline Mode</div>
+              <div className="text-sm opacity-80">Play with a partner</div>
+            </div>
+          </motion.button>
+
+          <motion.button
+            className="w-full rounded-2xl py-6 font-bold text-lg flex items-center justify-center gap-3"
+            style={{ background: "linear-gradient(135deg, hsl(190 90% 50%), hsl(220 90% 50%))", boxShadow: "0 0 20px hsl(190 90% 50% / 0.4)" }}
+            onClick={() => setMode("online")}
+            whileTap={{ scale: 0.97 }}
+          >
+            <span className="text-2xl">🌐</span>
+            <div className="text-left">
+              <div>Online Mode</div>
+              <div className="text-sm opacity-80">Play with anyone online</div>
+            </div>
+          </motion.button>
+        </div>
+      </div>
+
+      {/* Back to Main Menu Button */}
+      <div className="p-4 border-t border-border">
+        <motion.button
+          onClick={() => navigate("/")}
+          className="w-full rounded-xl bg-muted py-3 font-bold text-sm text-muted-foreground hover:text-foreground"
+          whileTap={{ scale: 0.97 }}
+        >
+          ← Back to Main Menu
+        </motion.button>
       </div>
     </div>
   );

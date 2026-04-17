@@ -11,7 +11,8 @@ export default function Players() {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { setPlayers, player1Id, player2Id } = usePlayerStore();
-  const { data: players = [] } = useGetPlayers();
+  const { data: players } = useGetPlayers();
+const playersArray = Array.isArray(players) ? players : [];
   const createPlayer = useCreatePlayer();
 
   const [mode, setMode] = useState<"select" | "create">("select");
@@ -119,9 +120,9 @@ export default function Players() {
       {mode === "select" ? (
         <>
           {/* Existing players */}
-          {players.length > 0 && (
+          {playersArray.length > 0 && (
             <div className="grid grid-cols-2 gap-2 mb-4">
-              {players.map((p) => {
+              {playersArray.map((p) => {
                 const isSelected = (slot === 1 && localP1 === p.id) || (slot === 2 && localP2 === p.id);
                 return (
                   <motion.button

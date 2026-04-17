@@ -81,44 +81,45 @@ const MEMORIES = [
 
 type GamePhase = "player1-puzzle" | "player2-answer" | "complete";
 const SIZE = 3;
+const TOTAL_TILES = SIZE * SIZE; // 9
 
-function initTiles(): number[][] {
-  let val = 1;
-  return Array.from({ length: SIZE }, (_, r) =>
-    Array.from({ length: SIZE }, (_, c) => {
-      if (r === SIZE - 1 && c === SIZE - 1) return 0;
-      return val++;
-    })
-  );
+// Helper: create solved board (0 is empty at last position)
+function getSolvedBoard(): number[] {
+  return Array.from({ length: TOTAL_TILES }, (_, i) => (i === TOTAL_TILES - 1 ? 0 : i + 1));
 }
 
-function shuffleTiles(tiles: number[][], emptyPos: { row: number; col: number }, steps = 40) {
-  const t = tiles.map(r => [...r]);
-  let ep = { ...emptyPos };
-  const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-  for (let s = 0; s < steps; s++) {
-    const valid = dirs.filter(([dr, dc]) => {
-      const nr = ep.row + dr, nc = ep.col + dc;
-      return nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE;
-    });
-    const [dr, dc] = valid[Math.floor(Math.random() * valid.length)];
-    const sr = ep.row + dr, sc = ep.col + dc;
-    t[ep.row][ep.col] = t[sr][sc];
-    t[sr][sc] = 0;
-    ep = { row: sr, col: sc };
+// Check if board is solved
+function isSolved(board: number[]): boolean {
+  for (let i = 0; i < TOTAL_TILES - 1; i++) {
+    if (board[i] !== i + 1) return false;
   }
-  return { tiles: t, emptyPos: ep };
+  return board[TOTAL_TILES - 1] === 0;
 }
 
-function checkWin(tiles: number[][]): boolean {
-  let val = 1;
-  for (let r = 0; r < SIZE; r++) {
-    for (let c = 0; c < SIZE; c++) {
-      if (r === SIZE - 1 && c === SIZE - 1) return tiles[r][c] === 0;
-      if (tiles[r][c] !== val++) return false;
-    }
+// Get valid moves from empty index (returns indices to swap with)
+function getValidMoves(emptyIdx: number): number[] {
+  const row = Math.floor(emptyIdx / SIZE);
+  const col = emptyIdx % SIZE;
+  const moves: number[] = [];
+  if (row > 0) moves.push(emptyIdx - SIZE); // up
+  if (row < SIZE - 1) moves.push(emptyIdx + SIZE); // down
+  if (col > 0) moves.push(emptyIdx - 1); // left
+  if (col < SIZE - 1) moves.push(emptyIdx + 1); // right
+  return moves;
+}
+
+// Perform a random walk to shuffle the board
+function shuffleBoard(board: number[], steps = 100): number[] {
+  let newBoard = [...board];
+  let emptyIdx = newBoard.indexOf(0);
+  for (let i = 0; i < steps; i++) {
+    const moves = getValidMoves(emptyIdx);
+    if (moves.length === 0) break;
+    const swapIdx = moves[Math.floor(Math.random() * moves.length)];
+    [newBoard[emptyIdx], newBoard[swapIdx]] = [newBoard[swapIdx], newBoard[emptyIdx]];
+    emptyIdx = swapIdx;
   }
-  return true;
+  return newBoard;
 }
 
 function getRandomQuestion(usedIdx: Set<number>): { question: string; idx: number } {
@@ -134,16 +135,7 @@ export default function MemoryVault() {
 
   const [memoryIdx, setMemoryIdx] = useState(0);
   const [phase, setPhase] = useState<GamePhase>("player1-puzzle");
-  const [tiles, setTiles] = useState<number[][]>(() => {
-    const init = initTiles();
-    const { tiles: shuffled } = shuffleTiles(init, { row: SIZE - 1, col: SIZE - 1 }, 35);
-    return shuffled;
-  });
-  const [emptyPos, setEmptyPos] = useState<{ row: number; col: number }>(() => {
-    const init = initTiles();
-    const { emptyPos: ep } = shuffleTiles(init, { row: SIZE - 1, col: SIZE - 1 }, 35);
-    return ep;
-  });
+  const [board, setBoard] = useState<number[]>(() => shuffleBoard(getSolvedBoard(), 40));
 
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [currentQIdx, setCurrentQIdx] = useState(-1);
@@ -155,33 +147,30 @@ export default function MemoryVault() {
   const [won, setWon] = useState(false);
 
   const doShuffle = useCallback(() => {
-    const freshTiles = initTiles();
-    const { tiles: s, emptyPos: ep } = shuffleTiles(freshTiles, { row: SIZE - 1, col: SIZE - 1 }, 40);
-    setTiles(s);
-    setEmptyPos(ep);
+    setBoard(shuffleBoard(getSolvedBoard(), 40));
     setMoves(0);
     setWon(false);
   }, []);
 
-  const handleTileClick = (row: number, col: number) => {
+  const handleTileClick = (idx: number) => {
     if (phase !== "player1-puzzle" || won) return;
-    const dr = Math.abs(emptyPos.row - row);
-    const dc = Math.abs(emptyPos.col - col);
-    if (!((dr === 1 && dc === 0) || (dr === 0 && dc === 1))) return;
-    if (navigator.vibrate) navigator.vibrate(15);
-    const newTiles = tiles.map(r => [...r]);
-    newTiles[emptyPos.row][emptyPos.col] = newTiles[row][col];
-    newTiles[row][col] = 0;
-    const newEmpty = { row, col };
-    setTiles(newTiles);
-    setEmptyPos(newEmpty);
+    const emptyIdx = board.indexOf(0);
+    const validMoves = getValidMoves(emptyIdx);
+    if (!validMoves.includes(idx)) return;
+
+    const newBoard = [...board];
+    [newBoard[emptyIdx], newBoard[idx]] = [newBoard[idx], newBoard[emptyIdx]];
+    setBoard(newBoard);
     setMoves(m => m + 1);
-    if (checkWin(newTiles)) {
+
+    if (navigator.vibrate) navigator.vibrate(15);
+
+    if (isSolved(newBoard)) {
       setWon(true);
       if (navigator.vibrate) navigator.vibrate([60, 30, 100]);
-      const { question, idx } = getRandomQuestion(usedQIdxs);
+      const { question, idx: qIdx } = getRandomQuestion(usedQIdxs);
       setCurrentQuestion(question);
-      setCurrentQIdx(idx);
+      setCurrentQIdx(qIdx);
       setTimeout(() => setPhase("player2-answer"), 600);
     }
   };
@@ -311,32 +300,37 @@ export default function MemoryVault() {
             </div>
           </div>
 
-          {/* Sliding puzzle */}
+          {/* Sliding puzzle - now using flat board */}
           <div className="px-4 mb-4">
             <div
               className="rounded-2xl border border-border p-3 mx-auto"
               style={{ background: "hsl(240 40% 3%)", maxWidth: "280px" }}
             >
               <div className="grid grid-cols-3 gap-2 mb-3">
-                {tiles.map((row, r) =>
-                  row.map((val, c) => (
+                {board.map((val, idx) => {
+                  const isVisible = val !== 0;
+                  return (
                     <motion.div
-                      key={`${r}-${c}`}
-                      className={`aspect-square rounded-xl flex items-center justify-center text-xl font-bold cursor-pointer select-none ${val === 0 ? "opacity-0 pointer-events-none" : ""}`}
-                      style={val === 0 ? {} : {
-                        background: "linear-gradient(145deg, hsl(30 90% 55% / 0.25), hsl(30 90% 55% / 0.1))",
-                        border: "1px solid hsl(30 90% 55% / 0.35)",
-                        color: "hsl(30 90% 55%)",
-                        boxShadow: "0 4px 0 hsl(30 90% 20%), 0 0 8px hsl(30 90% 55% / 0.2)",
-                      }}
-                      onClick={() => handleTileClick(r, c)}
-                      whileTap={val !== 0 && phase === "player1-puzzle" ? { scale: 0.92 } : {}}
-                      animate={won && val !== 0 ? { scale: [1, 1.05, 1] } : {}}
+                      key={idx}
+                      className={`aspect-square rounded-xl flex items-center justify-center text-xl font-bold cursor-pointer select-none ${!isVisible ? "opacity-0 pointer-events-none" : ""}`}
+                      style={
+                        isVisible
+                          ? {
+                              background: "linear-gradient(145deg, hsl(30 90% 55% / 0.25), hsl(30 90% 55% / 0.1))",
+                              border: "1px solid hsl(30 90% 55% / 0.35)",
+                              color: "hsl(30 90% 55%)",
+                              boxShadow: "0 4px 0 hsl(30 90% 20%), 0 0 8px hsl(30 90% 55% / 0.2)",
+                            }
+                          : {}
+                      }
+                      onClick={() => handleTileClick(idx)}
+                      whileTap={isVisible && phase === "player1-puzzle" ? { scale: 0.92 } : {}}
+                      animate={won && isVisible ? { scale: [1, 1.05, 1] } : {}}
                     >
-                      {val !== 0 ? val : ""}
+                      {isVisible ? val : ""}
                     </motion.div>
-                  ))
-                )}
+                  );
+                })}
               </div>
               <div className="flex gap-2">
                 <button

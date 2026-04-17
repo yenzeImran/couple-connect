@@ -21,7 +21,17 @@ router.post("/sync-up/sessions", async (req, res): Promise<void> => {
     return;
   }
 
-  const [player] = await db.select().from(playersTable).where(eq(playersTable.id, parsed.data.player1Id));
+  const [player] = await db
+    .select({
+      id: playersTable.id,
+      name: playersTable.name,
+      avatar: playersTable.avatar,
+      totalPoints: playersTable.totalPoints,
+      weeklyPoints: playersTable.weeklyPoints,
+      gamesPlayed: playersTable.gamesPlayed,
+    })
+    .from(playersTable)
+    .where(eq(playersTable.id, parsed.data.player1Id));
   if (!player) {
     res.status(404).json({ error: "Player not found" });
     return;
@@ -72,7 +82,14 @@ router.patch("/sync-up/sessions/:id/complete", async (req, res): Promise<void> =
     .where(eq(syncUpSessionsTable.id, params.data.id))
     .returning();
 
-  const [player1] = await db.select().from(playersTable).where(eq(playersTable.id, existing.player1Id));
+  const [player1] = await db
+    .select({
+      totalPoints: playersTable.totalPoints,
+      weeklyPoints: playersTable.weeklyPoints,
+      gamesPlayed: playersTable.gamesPlayed,
+    })
+    .from(playersTable)
+    .where(eq(playersTable.id, existing.player1Id));
   if (player1) {
     await db
       .update(playersTable)
@@ -84,7 +101,14 @@ router.patch("/sync-up/sessions/:id/complete", async (req, res): Promise<void> =
       .where(eq(playersTable.id, existing.player1Id));
   }
 
-  const [player2] = await db.select().from(playersTable).where(eq(playersTable.id, body.data.player2Id));
+  const [player2] = await db
+    .select({
+      totalPoints: playersTable.totalPoints,
+      weeklyPoints: playersTable.weeklyPoints,
+      gamesPlayed: playersTable.gamesPlayed,
+    })
+    .from(playersTable)
+    .where(eq(playersTable.id, body.data.player2Id));
   if (player2) {
     await db
       .update(playersTable)
