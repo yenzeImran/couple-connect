@@ -1,0 +1,14 @@
+[build]
+  publish = "artifacts/infinite-duo/dist/public"
+  command = "cd artifacts/infinite-duo && pnpm run build"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://your-api-server.com/api/:splat"
+  status = 200
+
+[context.production.environment]
+  PROD_API_URL = "https://your-api-server.com"

@@ -3,7 +3,8 @@ import { setBaseUrl } from "@workspace/api-client-react";
 import App from "./App";
 import "./index.css";
 
-// Configure API base URL to point to the API server
-setBaseUrl("http://localhost:8000");
+// Configure API base URL to point to API server
+const apiUrl = import.meta.env.PROD_API_URL || "http://localhost:8000";
+setBaseUrl(apiUrl);
 
 createRoot(document.getElementById("root")!).render(<App />);
