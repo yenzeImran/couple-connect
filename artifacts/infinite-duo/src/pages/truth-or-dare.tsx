@@ -282,7 +282,7 @@ function TruthOrDareOnline() {
 
   const CHAT_HISTORY_KEY = "truthordare_chat_history";
 
-  const [serverUrl, setServerUrl] = useState(`http://${window.location.hostname}:8000`);
+  const [serverUrl, setServerUrl] = useState("https://standalone-api-eight.vercel.app");
 
   const clearChat = () => {
     setChatMessages([]);
@@ -407,7 +407,11 @@ function TruthOrDareOnline() {
   };
 
   useEffect(() => {
-    const newSocket = io(serverUrl); // backend URL
+    const newSocket = io(serverUrl, {
+      transports: ['websocket', 'polling'],
+      secure: true,
+      rejectUnauthorized: false
+    }); // backend URL
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
