@@ -60,8 +60,8 @@ const playersArray = Array.isArray(players) ? players : [];
     navigate("/");
   };
 
-  const getPlayerName = (id: number | null) => players.find(p => p.id === id)?.name ?? null;
-  const getPlayerAvatar = (id: number | null) => players.find(p => p.id === id)?.avatar ?? "❓";
+  const getPlayerName = (id: number | null) => playersArray.find(p => p.id === id)?.name ?? null;
+  const getPlayerAvatar = (id: number | null) => playersArray.find(p => p.id === id)?.avatar ?? "??";
 
   return (
     <div className="min-h-[100dvh] bg-background flex flex-col p-4">
